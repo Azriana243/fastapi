@@ -7,19 +7,26 @@ from pydantic import BaseModel
 from starlette.applications import Starlette
 from starlette.exceptions import ExceptionMiddleware, HTTPException
 from starlette.middleware.errors import ServerErrorMiddleware
-from starlette.middleware.lifespan import LifespanMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
+from starlette.routing import BaseRoute
 
 
 async def http_exception(request: Request, exc: HTTPException) -> JSONResponse:
-    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    headers = getattr(exc, "headers", None)
+    if headers:
+        return JSONResponse(
+            {"detail": exc.detail}, status_code=exc.status_code, headers=headers
+        )
+    else:
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
 class FastAPI(Starlette):
     def __init__(
         self,
         debug: bool = False,
+        routes: List[BaseRoute] = None,
         template_directory: str = None,
         title: str = "Fast API",
         description: str = "",
@@ -31,14 +38,11 @@ class FastAPI(Starlette):
         **extra: Dict[str, Any],
     ) -> None:
         self._debug = debug
-        self.router: routing.APIRouter = routing.APIRouter()
+        self.router: routing.APIRouter = routing.APIRouter(routes)
         self.exception_middleware = ExceptionMiddleware(self.router, debug=debug)
         self.error_middleware = ServerErrorMiddleware(
             self.exception_middleware, debug=debug
         )
-        self.lifespan_middleware = LifespanMiddleware(self.error_middleware)
-        self.schema_generator = None
-        self.template_env = self.load_template_env(template_directory)
 
         self.title = title
         self.description = description
@@ -172,8 +176,10 @@ class FastAPI(Starlette):
 
         return decorator
 
-    def include_router(self, router: routing.APIRouter, *, prefix: str = "") -> None:
-        self.router.include_router(router, prefix=prefix)
+    def include_router(
+        self, router: routing.APIRouter, *, prefix: str = "", tags: List[str] = None
+    ) -> None:
+        self.router.include_router(router, prefix=prefix, tags=tags)
 
     def get(
         self,

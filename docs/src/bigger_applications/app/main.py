@@ -1,9 +1,8 @@
 from fastapi import FastAPI
 
-from .routers.items import router as items_router
-from .routers.users import router as users_router
+from .routers import items, users
 
 app = FastAPI()
 
-app.include_router(users_router)
-app.include_router(items_router, prefix="/items")
+app.include_router(users.router)
+app.include_router(items.router, prefix="/items", tags=["items"])

@@ -15,7 +15,6 @@ from pydantic.utils import lenient_issubclass
 from starlette import routing
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
-from starlette.formparsers import UploadFile
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import compile_path, get_name, request_response
@@ -57,10 +56,7 @@ def get_app(
                     raw_body = await request.form()
                     form_fields = {}
                     for field, value in raw_body.items():
-                        if isinstance(value, UploadFile):
-                            form_fields[field] = await value.read()
-                        else:
-                            form_fields[field] = value
+                        form_fields[field] = value
                     if form_fields:
                         body = form_fields
                 else:
@@ -72,7 +68,7 @@ def get_app(
             raise HTTPException(
                 status_code=400, detail="There was an error parsing the body"
             )
-        values, errors = await solve_dependencies(
+        values, errors, background_tasks = await solve_dependencies(
             request=request, dependant=dependant, body=body
         )
         if errors:
@@ -87,11 +83,17 @@ def get_app(
             else:
                 raw_response = await run_in_threadpool(dependant.call, **values)
             if isinstance(raw_response, Response):
+                if raw_response.background is None:
+                    raw_response.background = background_tasks
                 return raw_response
             response_data = serialize_response(
                 field=response_field, response=raw_response
             )
-            return content_type(content=response_data, status_code=status_code)
+            return content_type(
+                content=response_data,
+                status_code=status_code,
+                background=background_tasks,
+            )
 
     return app
 
@@ -241,7 +243,9 @@ class APIRouter(routing.Router):
 
         return decorator
 
-    def include_router(self, router: "APIRouter", *, prefix: str = "") -> None:
+    def include_router(
+        self, router: "APIRouter", *, prefix: str = "", tags: List[str] = None
+    ) -> None:
         if prefix:
             assert prefix.startswith("/"), "A path prefix must start with '/'"
             assert not prefix.endswith(
@@ -254,7 +258,7 @@ class APIRouter(routing.Router):
                     route.endpoint,
                     response_model=route.response_model,
                     status_code=route.status_code,
-                    tags=route.tags or [],
+                    tags=(route.tags or []) + (tags or []),
                     summary=route.summary,
                     description=route.description,
                     response_description=route.response_description,
@@ -272,6 +276,10 @@ class APIRouter(routing.Router):
                     methods=route.methods,
                     include_in_schema=route.include_in_schema,
                     name=route.name,
+                )
+            elif isinstance(route, routing.WebSocketRoute):
+                self.add_websocket_route(
+                    prefix + route.path, route.endpoint, name=route.name
                 )
 
     def get(

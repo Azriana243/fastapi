@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://fastapi.tiangolo.com"><img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal-vector.svg" alt='FastAPI'></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="FastAPI"></a>
 </p>
 <p align="center">
     <em>FastAPI framework, high performance, easy to learn, fast to code, ready for production</em>
@@ -13,6 +13,9 @@
 </a>
 <a href="https://pypi.org/project/fastapi" target="_blank">
     <img src="https://badge.fury.io/py/fastapi.svg" alt="Package version">
+</a>
+<a href="https://gitter.im/tiangolo/fastapi?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge" target="_blank">
+    <img src="https://badges.gitter.im/tiangolo/fastapi.svg" alt="Join the chat at https://gitter.im/tiangolo/fastapi">
 </a>
 </p>
 
@@ -31,10 +34,10 @@ The key features are:
 * **Fast**: Very high performance, on par with **NodeJS** and **Go** (thanks to Starlette and Pydantic). [One of the fastest Python frameworks available](#performance).
 
 * **Fast to code**: Increase the speed to develop features by about 200% to 300% *.
-* **Less bugs**: Reduce about 40% of human (developer) induced errors. *
+* **Fewer bugs**: Reduce about 40% of human (developer) induced errors. *
 * **Intuitive**: Great editor support. <abbr title="also known as auto-complete, autocompletion, IntelliSense">Completion</abbr> everywhere. Less time debugging.
 * **Easy**: Designed to be easy to use and learn. Less time reading docs.
-* **Short**: Minimize code duplication. Multiple features from each parameter declaration. Less bugs.
+* **Short**: Minimize code duplication. Multiple features from each parameter declaration. Fewer bugs.
 * **Robust**: Get production-ready code. With automatic interactive documentation.
 * **Standards-based**: Based on (and fully compatible with) the open standards for APIs: <a href="https://github.com/OAI/OpenAPI-Specification" target="_blank">OpenAPI</a> (previously known as Swagger) and <a href="http://json-schema.org/" target="_blank">JSON Schema</a>.
 
@@ -116,17 +119,17 @@ If you don't know, check the _"In a hurry?"_ section about <a href="https://fast
 Run the server with:
 
 ```bash
-uvicorn main:app --debug
+uvicorn main:app --reload
 ```
 
 <details markdown="1">
-<summary>About the command <code>uvicorn main:app --debug</code>...</summary>
+<summary>About the command <code>uvicorn main:app --reload</code>...</summary>
 
 The command `uvicorn main:app` refers to:
 
 * `main`: the file `main.py` (the Python "module").
 * `app`: the object created inside of `main.py` with the line `app = FastAPI()`.
-* `--debug`: make the server restart after code changes. Only do this for development.
+* `--reload`: make the server restart after code changes. Only do this for development.
 
 </details>
 
@@ -199,7 +202,7 @@ def create_item(item_id: int, item: Item):
     return {"item_name": item.name, "item_id": item_id}
 ```
 
-The server should reload automatically (because you added `--debug` to the `uvicorn` command above).
+The server should reload automatically (because you added `--reload` to the `uvicorn` command above).
 
 ### Interactive API docs upgrade
 
@@ -344,7 +347,7 @@ For a more complete example including more features, see the <a href="https://fa
 
 ## Performance
 
-Independent TechEmpower benchmarks show **FastAPI** applications running under Uvicorn as <a href="https://www.techempower.com/benchmarks/#section=test&runid=a979de55-980d-4721-a46f-77298b3f3923&hw=ph&test=fortune&l=zijzen-7" target="_blank">one of the fastest Python frameworks available</a>, only below Starlette and Uvicorn themselves (used internally by FastAPI). (*)
+Independent TechEmpower benchmarks show **FastAPI** applications running under Uvicorn as <a href="https://www.techempower.com/benchmarks/#section=test&runid=7464e520-0dc2-473d-bd34-dbdfd7e85911&hw=ph&test=query&l=zijzen-7" target="_blank">one of the fastest Python frameworks available</a>, only below Starlette and Uvicorn themselves (used internally by FastAPI). (*)
 
 To understand more about it, see the section <a href="https://fastapi.tiangolo.com/benchmarks/" target="_blank">Benchmarks</a>.
 

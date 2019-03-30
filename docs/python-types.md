@@ -29,7 +29,7 @@ John Doe
 
 The function does the following: 
 
-* Takes a `fist_name` and `last_name`.
+* Takes a `first_name` and `last_name`.
 * Converts the first letter of each one to upper case with `title()`.
 * <abbr title="Puts them together, as one. With the contents of one after the other.">Concatenates</abbr> them with a space in the middle.
 
@@ -49,7 +49,7 @@ But then you have to call "that method that converts the first letter to upper c
 
 Was it `upper`? Was it `uppercase`? `first_uppercase`? `capitalize`?
 
-Then, you try with the old programer's friend, editor autocompletion.
+Then, you try with the old programmer's friend, editor autocompletion.
 
 You type the first parameter of the function, `first_name`, then a dot (`.`) and then hit `Ctrl+Space` to trigger the completion.
 

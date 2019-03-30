@@ -1,12 +1,6 @@
 from fastapi import FastAPI
 
-app = FastAPI(
-    title="My Super Project",
-    version="2.5.0",
-    openapi_url="/api/v1/openapi.json",
-    docs_url="/api/v1/docs",
-    redoc_url=None,
-)
+app = FastAPI(docs_url="/documentation", redoc_url=None)
 
 
 @app.get("/items/")

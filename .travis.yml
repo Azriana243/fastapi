@@ -1,10 +1,12 @@
+dist: xenial
+
 language: python
 
 cache: pip
 
 python:
     - "3.6"
-    - "3.7-dev"
+    - "3.7"
 
 install:
     - pip install flit
@@ -15,3 +17,9 @@ script:
 
 after_script:
     - bash <(curl -s https://codecov.io/bash)
+
+deploy:
+  provider: script
+  script: bash scripts/trigger-docker.sh
+  on:
+    branch: master

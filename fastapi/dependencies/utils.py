@@ -3,7 +3,18 @@ import inspect
 from copy import deepcopy
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Mapping, Sequence, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+)
 from uuid import UUID
 
 from fastapi import params
@@ -16,7 +27,9 @@ from pydantic.errors import MissingError
 from pydantic.fields import Field, Required, Shape
 from pydantic.schema import get_annotation_from_schema
 from pydantic.utils import lenient_issubclass
+from starlette.background import BackgroundTasks
 from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile
 from starlette.requests import Headers, QueryParams, Request
 
 param_supported_types = (
@@ -87,7 +100,6 @@ def get_dependant(*, path: str, call: Callable, name: str = None) -> Dependant:
                 lenient_issubclass(param.annotation, param_supported_types)
                 or param.annotation == param.empty
             ), f"Path params must be of one of the supported types"
-            param = signature_params[param_name]
             add_param_to_fields(
                 param=param,
                 dependant=dependant,
@@ -124,6 +136,8 @@ def get_dependant(*, path: str, call: Callable, name: str = None) -> Dependant:
             )
         elif lenient_issubclass(param.annotation, Request):
             dependant.request_param_name = param_name
+        elif lenient_issubclass(param.annotation, BackgroundTasks):
+            dependant.background_tasks_param_name = param_name
         elif not isinstance(param.default, params.Depends):
             add_param_to_body_fields(param=param, dependant=dependant)
     return dependant
@@ -214,13 +228,20 @@ def is_coroutine_callable(call: Callable) -> bool:
 
 
 async def solve_dependencies(
-    *, request: Request, dependant: Dependant, body: Dict[str, Any] = None
-) -> Tuple[Dict[str, Any], List[ErrorWrapper]]:
+    *,
+    request: Request,
+    dependant: Dependant,
+    body: Dict[str, Any] = None,
+    background_tasks: BackgroundTasks = None,
+) -> Tuple[Dict[str, Any], List[ErrorWrapper], Optional[BackgroundTasks]]:
     values: Dict[str, Any] = {}
     errors: List[ErrorWrapper] = []
     for sub_dependant in dependant.dependencies:
-        sub_values, sub_errors = await solve_dependencies(
-            request=request, dependant=sub_dependant, body=body
+        sub_values, sub_errors, background_tasks = await solve_dependencies(
+            request=request,
+            dependant=sub_dependant,
+            body=body,
+            background_tasks=background_tasks,
         )
         if sub_errors:
             errors.extend(sub_errors)
@@ -257,7 +278,11 @@ async def solve_dependencies(
         errors.extend(body_errors)
     if dependant.request_param_name:
         values[dependant.request_param_name] = request
-    return values, errors
+    if dependant.background_tasks_param_name:
+        if background_tasks is None:
+            background_tasks = BackgroundTasks()
+        values[dependant.background_tasks_param_name] = background_tasks
+    return values, errors, background_tasks
 
 
 def request_params_to_args(
@@ -323,6 +348,12 @@ async def request_body_to_args(
                 else:
                     values[field.name] = deepcopy(field.default)
                 continue
+            if (
+                isinstance(field.schema, params.File)
+                and lenient_issubclass(field.type_, bytes)
+                and isinstance(value, UploadFile)
+            ):
+                value = await value.read()
             v_, errors_ = field.validate(value, values, loc=("body", field.alias))
             if isinstance(errors_, ErrorWrapper):
                 errors.append(errors_)
@@ -333,6 +364,21 @@ async def request_body_to_args(
     return values, errors
 
 
+def get_schema_compatible_field(*, field: Field) -> Field:
+    if lenient_issubclass(field.type_, UploadFile):
+        return Field(
+            name=field.name,
+            type_=bytes,
+            class_validators=field.class_validators,
+            model_config=field.model_config,
+            default=field.default,
+            required=field.required,
+            alias=field.alias,
+            schema=field.schema,
+        )
+    return field
+
+
 def get_body_field(*, dependant: Dependant, name: str) -> Field:
     flat_dependant = get_flat_dependant(dependant)
     if not flat_dependant.body_params:
@@ -340,11 +386,11 @@ def get_body_field(*, dependant: Dependant, name: str) -> Field:
     first_param = flat_dependant.body_params[0]
     embed = getattr(first_param.schema, "embed", None)
     if len(flat_dependant.body_params) == 1 and not embed:
-        return first_param
+        return get_schema_compatible_field(field=first_param)
     model_name = "Body_" + name
     BodyModel = create_model(model_name)
     for f in flat_dependant.body_params:
-        BodyModel.__fields__[f.name] = f
+        BodyModel.__fields__[f.name] = get_schema_compatible_field(field=f)
     required = any(True for f in flat_dependant.body_params if f.required)
     if any(isinstance(f.schema, params.File) for f in flat_dependant.body_params):
         BodySchema: Type[params.Body] = params.File
